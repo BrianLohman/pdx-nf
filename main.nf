@@ -170,6 +170,7 @@ process fastqscreen {
 
     input:
       tuple val(pair_id), path(reads)
+      path(screen_conf)
 
     output:
     path("${pair_id}.trim1_screen.html")
@@ -178,7 +179,7 @@ process fastqscreen {
     script:
       """
       /uufs/chpc.utah.edu/common/HIPAA/hci-bioinformatics1/atlatl/app/fastq_screen/v0.14.0/fastq_screen \
-      --conf /uufs/chpc.utah.edu/common/HIPAA/hci-bioinformatics1/atlatl/data/FastQ_Screen_Genomes/redwood_fastq_screen.conf \
+      --conf $screen_conf \
       --subset 1000000 ${pair_id}.trim1.fastq.gz -outdir ./
       """
 }
@@ -213,14 +214,16 @@ process rnaseq_metrics {
 
     input:
       tuple val(pair_id), path(bam), path(bai)
+      path(refflat)
+      path(riboint)
 
     output:
       path("${pair_id}.rna_metrics")
 
     script:
       """
-      /usr/bin/java -Xmx20G -jar /uufs/chpc.utah.edu/common/HIPAA/hci-bioinformatics1/atlatl/app/picard/2.9.0/picard.jar CollectRnaSeqMetrics  REF_FLAT=/uufs/chpc.utah.edu/common/HIPAA/hci-bioinformatics1/atlatl/data/Human/GRCh38/release104/Homo_sapiens.GRCh38.104.refflat \
-      STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=/uufs/chpc.utah.edu/common/HIPAA/hci-bioinformatics1/atlatl/data/Human/GRCh38/release104/Homo_sapiens.GRCh38.104.rRNA.interval \
+      /usr/bin/java -Xmx20G -jar /uufs/chpc.utah.edu/common/HIPAA/hci-bioinformatics1/atlatl/app/picard/2.9.0/picard.jar CollectRnaSeqMetrics  REF_FLAT= $refflat \
+      STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS= $riboint \
       I=${pair_id}_human_sorted.bam  O=${pair_id}.rna_metrics
       """
 }
@@ -231,7 +234,7 @@ workflow {
     star(params.star_index, trim.out.trimmed_reads)
     filter_alignment(star.out.bam)
     feature_counts(filter_alignment.out.indexed_bam, params.gtf)
-    fastqscreen(trim.out.trimmed_reads)
+    fastqscreen(trim.out.trimmed_reads, params.screen_conf)
     fastqc(trim.out.trimmed_reads)
-    rnaseq_metrics(filter_alignment.out.indexed_bam)
+    rnaseq_metrics(filter_alignment.out.indexed_bam, params.refflat, params.riboint)
 }
