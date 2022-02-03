@@ -65,8 +65,6 @@ process trim {
     module 'cutadapt/2.10'
     tag "$pair_id"
 
-    publishDir "${params.outdir}/trimmed_reads", mode:"copy"
-    
     input:
       tuple val(pair_id), path(deduped_reads)
 
